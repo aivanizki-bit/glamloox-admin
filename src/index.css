@@ -35,7 +35,39 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  background: #F6F9FF;
+  /* Проход 1: брендированный фон */
+  background:
+    radial-gradient(900px 500px at 110% -5%, rgba(46, 91, 240, 0.07), transparent 60%),
+    radial-gradient(700px 400px at -10% 100%, rgba(122, 150, 248, 0.06), transparent 55%),
+    #F6F9FF;
+  background-attachment: fixed;
+  color: #061238;
+}
+
+/* Проход 2: Скроллбар в фирменном стиле */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #A3BAFC, #4C6EF5);
+  border-radius: 999px;
+  border: 2px solid #F6F9FF;
+}
+::selection { background: rgba(46, 91, 240, 0.18); }
+
+/* Заголовки таблиц в фирменном стиле */
+.admin-table thead th {
+  background: linear-gradient(180deg, #EEF3FF, #F6F9FF);
+  color: #1E44DD;
+  letter-spacing: 0.06em;
+}
+
+/* Тонкий бренд-акцент на карточках-заголовках */
+.brand-eyebrow {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #2E5BF0;
 }
 
 @keyframes fadeUp {

@@ -2,14 +2,16 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-mist-200 bg-white shadow-card ${className}`}>{children}</div>;
+  return <div className={`rounded-3xl border border-mist-200 bg-white shadow-card ${className}`}>{children}</div>;
 }
 
-export function PageHeader({ title, sub, action }: { title: string; sub?: string; action?: ReactNode }) {
+export function PageHeader({ title, sub, action, eyebrow }: { title: string; sub?: string; action?: ReactNode; eyebrow?: string }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-[24px] font-extrabold tracking-tight text-deep-950">{title}</h1>
+        {/* Проход 6: бренд-надзаголовок */}
+        <p className="brand-eyebrow">{eyebrow ?? 'GLAMLOOX Admin'}</p>
+        <h1 className="mt-1 text-[24px] font-extrabold tracking-tight text-deep-950">{title}</h1>
         {sub && <p className="mt-1 text-[13.5px] text-slate-500">{sub}</p>}
       </div>
       {action}
@@ -17,20 +19,53 @@ export function PageHeader({ title, sub, action }: { title: string; sub?: string
   );
 }
 
-export function Stat({ icon, label, value, hint, tone = 'royal' }: { icon: ReactNode; label: string; value: string; hint?: string; tone?: 'royal' | 'gold' | 'emerald' }) {
-  const tones = {
-    royal: 'bg-royal-50 text-royal-600',
-    gold: 'bg-amber-50 text-amber-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-  };
+/** Проход 7: мини-спарклайн для KPI-карт */
+export function Sparkline({ points, className = '' }: { points: number[]; className?: string }) {
+  const max = Math.max(...points);
+  const min = Math.min(...points);
+  const range = max - min || 1;
+  const path = points
+    .map((p, i) => `${(i / (points.length - 1)) * 100},${28 - ((p - min) / range) * 24}`)
+    .join(' ');
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-3.5">
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}>{icon}</span>
-        <div className="min-w-0">
-          <p className="text-[11.5px] font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+    <svg viewBox="0 0 100 30" className={`h-8 w-full ${className}`} preserveAspectRatio="none" aria-hidden>
+      <polyline points={path} fill="none" stroke="#2E5BF0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={points.length > 1 ? 100 : 0} cy={28 - ((points[points.length - 1] - min) / range) * 24} r="2.5" fill="#2E5BF0" />
+    </svg>
+  );
+}
+
+export function Stat({
+  icon,
+  label,
+  value,
+  hint,
+  tone = 'royal',
+  spark,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: 'royal' | 'gold' | 'emerald';
+  spark?: number[];
+}) {
+  const tones = {
+    royal: { chip: 'bg-gradient-to-br from-royal-500 to-deep-900 text-white', ring: 'bg-royal-50' },
+    gold: { chip: 'bg-gradient-to-br from-gold-400 to-gold-500 text-white', ring: 'bg-amber-50' },
+    emerald: { chip: 'bg-gradient-to-br from-emerald-400 to-emerald-600 text-white', ring: 'bg-emerald-50' },
+  }[tone];
+  return (
+    <Card className="relative overflow-hidden p-4">
+      {/* Угол-акцент как в App-карточках */}
+      <div className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full bg-royal-50" aria-hidden />
+      <div className="relative flex items-center gap-3.5">
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-card ${tones.chip}`}>{icon}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{label}</p>
           <p className="text-[22px] font-extrabold leading-tight text-deep-950 tabular-nums">{value}</p>
           {hint && <p className="text-[11px] text-slate-400">{hint}</p>}
+          {spark && <Sparkline points={spark} className="mt-1" />}
         </div>
       </div>
     </Card>
@@ -63,7 +98,7 @@ export function Button({
   className?: string;
 }) {
   const variants = {
-    primary: 'bg-royal-600 text-white hover:bg-royal-700 shadow-card',
+    primary: 'bg-gradient-to-r from-royal-600 to-royal-700 text-white hover:from-royal-700 hover:to-royal-800 shadow-card',
     ghost: 'border border-mist-200 bg-white text-deep-900 hover:bg-mist-50 shadow-card',
     danger: 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100',
     dark: 'bg-deep-900 text-white hover:bg-deep-950 shadow-card',
@@ -138,7 +173,9 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="anim-fade-in absolute inset-0 bg-deep-950/50 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div ref={ref} className="anim-fade-up relative w-full max-w-lg rounded-3xl border border-mist-200 bg-white p-5 shadow-float">
+      <div ref={ref} className="anim-fade-up relative w-full max-w-lg overflow-hidden rounded-3xl border border-mist-200 bg-white shadow-float">
+        <div className="h-1.5 w-full bg-gradient-to-r from-royal-500 to-deep-900" aria-hidden />
+        <div className="p-5 pt-4">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[17px] font-extrabold tracking-tight text-deep-950">{title}</h2>
           <button onClick={onClose} aria-label="Dialog schließen" className="tap flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-mist-100">
@@ -146,6 +183,7 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
           </button>
         </div>
         {children}
+        </div>
       </div>
     </div>
   );

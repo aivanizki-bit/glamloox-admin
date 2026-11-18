@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import {
   LayoutDashboard,
+  Sparkles,
   Package,
   GraduationCap,
   CalendarDays,
@@ -39,45 +40,79 @@ export default function Layout({ children }: { children: ReactNode }) {
     <div className="min-h-screen lg:flex">
       {/* ── Sidebar ── */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-[240px] transform overflow-y-auto bg-deep-950 transition-transform lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-[250px] transform overflow-y-auto transition-transform lg:static lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
+        style={{
+          background: 'linear-gradient(170deg, #061238 0%, #0A1E5A 45%, #14267A 100%)',
+          boxShadow: '20px 0 60px -30px rgba(6, 18, 56, 0.5)',
+        }}
       >
-        <div className="flex h-full flex-col p-4">
+        {/* Декоративное свечение как в App-Hero */}
+        <div
+          className="pointer-events-none absolute -left-16 -top-16 h-52 w-52 rounded-full opacity-30 blur-3xl"
+          style={{ background: 'radial-gradient(circle, #4C6EF5, transparent 70%)' }}
+          aria-hidden
+        />
+        <div className="relative flex h-full flex-col p-4">
+          {/* Бренд-шапка с ®-маркой */}
           <div className="flex items-center gap-2.5 px-2 py-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-royal-500 to-royal-700 text-[15px] font-extrabold text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-royal-400 to-royal-700 text-[17px] font-extrabold text-white shadow-float">
               A
             </div>
             <div className="leading-none">
-              <p className="text-[15px] font-extrabold tracking-tight text-white">
+              <p className="text-[16px] font-extrabold tracking-tight text-white">
                 GLAM<span className="text-royal-300">LOOX</span>
+                <span className="ml-0.5 align-super text-[8px] font-bold text-royal-300">®</span>
               </p>
-              <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.2em] text-royal-300/70">Admin Console</p>
+              <p className="mt-1 text-[9.5px] font-bold uppercase tracking-[0.24em] text-royal-300/70">Admin Console</p>
             </div>
             <button onClick={() => setSidebarOpen(false)} aria-label="Menü schließen" className="tap ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-white/50 lg:hidden">
               <X className="h-5 w-5" aria-hidden />
             </button>
           </div>
 
-          <nav className="mt-4 flex-1 space-y-1" aria-label="Admin-Navigation">
-            {nav.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
-                onClick={() => setSidebarOpen(false)}
-                className={({ isActive }) =>
-                  `tap flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-colors ${
-                    isActive ? 'bg-royal-600 text-white shadow-card' : 'text-white/60 hover:bg-white/10 hover:text-white'
-                  }`
-                }
-              >
-                <Icon className="h-[17px] w-[17px] shrink-0" aria-hidden />
-                <span className="flex-1">{label}</span>
-                {to === '/bestellungen' && openOrders > 0 && (
-                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white">{openOrders}</span>
-                )}
-              </NavLink>
+          {/* Секции навигации с бренд-подписями */}
+          <nav className="mt-4 flex-1 space-y-6" aria-label="Admin-Navigation">
+            {[
+              { group: 'Übersicht', items: [nav[0]] },
+              { group: 'Katalog & Inhalte', items: [nav[1], nav[2], nav[3]] },
+              { group: 'Community & Order', items: [nav[4], nav[5]] },
+              { group: 'System', items: [nav[6], nav[7], nav[8]] },
+            ].map(({ group, items }) => (
+              <div key={group}>
+                <p className="px-3 pb-1.5 text-[9.5px] font-extrabold uppercase tracking-[0.22em] text-royal-300/50">{group}</p>
+                <div className="space-y-1">
+                  {items.map(({ to, label, icon: Icon }) => (
+                    <NavLink
+                      key={to}
+                      to={to}
+                      end={to === '/'}
+                      onClick={() => setSidebarOpen(false)}
+                      className={({ isActive }) =>
+                        `tap relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all ${
+                          isActive
+                            ? 'bg-gradient-to-r from-royal-500 to-royal-700 text-white shadow-float'
+                            : 'text-white/55 hover:bg-white/10 hover:text-white'
+                        }`
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          {isActive && (
+                            <span className="absolute -left-4 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-royal-300" aria-hidden />
+                          )}
+                          <Icon className="h-[17px] w-[17px] shrink-0" aria-hidden />
+                          <span className="flex-1">{label}</span>
+                          {to === '/bestellungen' && openOrders > 0 && (
+                            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold text-white">{openOrders}</span>
+                          )}
+                        </>
+                      )}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
 
@@ -96,16 +131,23 @@ export default function Layout({ children }: { children: ReactNode }) {
             >
               <LogOut className="h-[17px] w-[17px]" aria-hidden /> Abmelden
             </button>
-            <p className="px-3 pb-2 pt-2 text-[10px] leading-relaxed text-white/30">
-              Admin-Demo · Daten lokal im Browser
-            </p>
+            {/* Проход 5: бренд-карточка версии */}
+            <div className="mt-2 rounded-2xl border border-white/10 bg-white/5 p-3.5">
+              <p className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-royal-300">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden /> Natürlich. Sicher. Einfach du.
+              </p>
+              <p className="mt-1 text-[9.5px] leading-relaxed text-white/35">
+                Admin-Demo v2.1 · Daten lokal im Browser
+              </p>
+            </div>
           </div>
         </div>
       </aside>
 
       {/* ── Inhalt ── */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-[60px] items-center gap-3 border-b border-mist-200 bg-white/90 px-4 backdrop-blur-xl lg:px-8">
+        <header className="sticky top-0 z-30 flex h-[60px] items-center gap-3 border-b border-mist-200 bg-white/85 px-4 backdrop-blur-xl lg:px-8"
+          style={{ boxShadow: '0 1px 0 rgba(46, 91, 240, 0.06)' }}>
           <button
             onClick={() => setSidebarOpen(true)}
             aria-label="Menü öffnen"
@@ -129,6 +171,15 @@ export default function Layout({ children }: { children: ReactNode }) {
 
         <main className="flex-1 p-4 lg:p-8">
           <div className="mx-auto max-w-[1200px]">{children}</div>
+          {/* Проход 5: бренд-футер */}
+          <footer className="mx-auto mt-8 max-w-[1200px] pb-6 text-center">
+            <p className="text-[10.5px] font-semibold tracking-wide text-slate-300">
+              GLAMLOOX<span className="align-super text-[8px]">®</span> Admin Console · Interactive Concept Demo ·{' '}
+              <a href="https://glamloox.net" target="_blank" rel="noreferrer" className="underline hover:text-royal-500">
+                glamloox.net
+              </a>
+            </p>
+          </footer>
         </main>
       </div>
 

@@ -15,7 +15,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { useAdmin, eur, statusColor } from '../store/AdminStore';
-import { Card, PageHeader, Stat, Badge, Button } from '../components/ui';
+import { Card, Stat, Badge, Button } from '../components/ui';
 
 export default function Dashboard() {
   const { products, courses, events, posts, members, orders, outbox, adminName, rewardPoints, punkteRegeln } = useAdmin();
@@ -39,10 +39,10 @@ export default function Dashboard() {
   const maxCount = Math.max(...counts);
 
   const kpis = [
-    { icon: <Euro className="h-5 w-5" aria-hidden />, label: 'Demo-Umsatz', value: eur(revenue), hint: 'ohne storniert', tone: 'royal' as const, delta: '+23 %', up: true },
-    { icon: <ShoppingBag className="h-5 w-5" aria-hidden />, label: 'Bestellungen', value: orders.length.toString(), hint: `${openOrders.length} offen · Ø ${eur(avgOrder)}`, tone: 'emerald' as const, delta: '+8', up: true },
-    { icon: <GraduationCap className="h-5 w-5" aria-hidden />, label: 'Einschreibungen', value: enrollments.toLocaleString('de-DE'), hint: `${courses.length} Kurse`, tone: 'royal' as const, delta: '+4,2 %', up: true },
-    { icon: <Users className="h-5 w-5" aria-hidden />, label: 'Community', value: members.length.toString(), hint: `${posts.length} Beiträge · ${stornoRate} % Storno`, tone: 'gold' as const, delta: '−2', up: false },
+    { icon: <Euro className="h-5 w-5" aria-hidden />, label: 'Demo-Umsatz', value: eur(revenue), hint: 'ohne storniert', tone: 'royal' as const, delta: '+23 %', up: true, spark: [12, 18, 15, 22, 26, 31] },
+    { icon: <ShoppingBag className="h-5 w-5" aria-hidden />, label: 'Bestellungen', value: orders.length.toString(), hint: `${openOrders.length} offen · Ø ${eur(avgOrder)}`, tone: 'emerald' as const, delta: '+8', up: true, spark: [9, 14, 11, 17, 21, 24] },
+    { icon: <GraduationCap className="h-5 w-5" aria-hidden />, label: 'Einschreibungen', value: enrollments.toLocaleString('de-DE'), hint: `${courses.length} Kurse`, tone: 'royal' as const, delta: '+4,2 %', up: true, spark: [820, 900, 980, 1100, 1240, 1310] },
+    { icon: <Users className="h-5 w-5" aria-hidden />, label: 'Community', value: members.length.toString(), hint: `${posts.length} Beiträge · ${stornoRate} % Storno`, tone: 'gold' as const, delta: '−2', up: false, spark: [5, 6, 8, 7, 9, 10] },
   ];
 
   const quickActions = [
@@ -65,15 +65,44 @@ export default function Dashboard() {
 
   return (
     <div className="anim-fade-up">
-      <PageHeader
-        title={`Dashboard · ${greeting}, ${adminName}`}
-        sub={`Stand: ${refreshAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr · ${rewardPoints} Punkte im Demo-Konto · ${punkteRegeln.euroProPunkt} € = 1 P.`}
-        action={
-          <Button variant="ghost" onClick={() => setRefreshAt(new Date())}>
-            <RefreshCw className="h-4 w-4" aria-hidden /> Aktualisieren
-          </Button>
-        }
-      />
+      {/* Проход 8: бренд-Hero как в App */}
+      <div className="relative mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-deep-950 via-deep-900 to-royal-800 px-6 py-6 shadow-float">
+        <div
+          className="pointer-events-none absolute -right-14 -top-16 h-56 w-56 rounded-full opacity-30 blur-2xl"
+          style={{ background: 'radial-gradient(circle, #7A96F8, transparent 70%)' }}
+          aria-hidden
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-[10.5px] font-extrabold uppercase tracking-[0.22em] text-royal-300">
+              GLAMLOOX Admin · {greeting}, {adminName}
+            </p>
+            <h1 className="mt-1.5 text-[26px] font-extrabold tracking-tight text-white">
+              Dein Prototyp auf einen Blick
+            </h1>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {['Ohne Hormone', 'Vegan', 'Tierversuchsfrei'].map((u) => (
+                <span key={u} className="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/90 backdrop-blur">
+                  💙 {u}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-center backdrop-blur">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-royal-300">Demo-Punkte</p>
+              <p className="text-[20px] font-extrabold tabular-nums text-white">{rewardPoints}</p>
+            </div>
+            <Button variant="ghost" onClick={() => setRefreshAt(new Date())} className="!border-white/25 !bg-white/10 !text-white hover:!bg-white/20">
+              <RefreshCw className="h-4 w-4" aria-hidden /> Aktualisieren
+            </Button>
+          </div>
+        </div>
+        <p className="relative mt-3 text-[10.5px] text-white/40">
+          Stand {refreshAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr · Regeln:{' '}
+          {punkteRegeln.euroProPunkt} € = 1 P. · +{punkteRegeln.bonusOrder} P. je Bestellung
+        </p>
+      </div>
 
       {/* KPIs mit Trend-Delta */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">

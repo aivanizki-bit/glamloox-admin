@@ -43,8 +43,16 @@ export default function Login() {
           </div>
           <p className="mt-3 text-[24px] font-extrabold tracking-tight text-white">
             GLAM<span className="text-royal-300">LOOX</span>
+            <span className="ml-0.5 align-super text-[10px] font-bold text-royal-300">®</span>
           </p>
           <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.25em] text-royal-300/70">Admin Console</p>
+          <div className="mt-3 flex justify-center gap-2">
+            {['Ohne Hormone', 'Vegan', 'Tierversuchsfrei'].map((u) => (
+              <span key={u} className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold text-white/80">
+                💙 {u}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className="rounded-3xl border border-white/15 bg-white/[0.08] p-6 backdrop-blur-xl">
