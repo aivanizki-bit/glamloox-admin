@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Search, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
-import { useAdmin } from '../store/AdminStore';
+import { Search, Plus, Trash2, Eye, EyeOff, Copy, Download, Minus } from 'lucide-react';
+import { useAdmin, eur } from '../store/AdminStore';
 import { Card, PageHeader, Button, TextInput, Toggle, Modal, EmptyRow } from '../components/ui';
 
 const catLabels: Record<string, string> = {
@@ -9,12 +9,22 @@ const catLabels: Record<string, string> = {
   pflege: 'Pflege',
   zubehoer: 'Zubehör',
 };
+const catEmoji: Record<string, string> = {
+  'lash-lifting': '👁️',
+  brow: '🖌️',
+  pflege: '💧',
+  zubehoer: '🧰',
+};
+const PER_PAGE = 10;
 
 export default function Products() {
-  const { products, updateProduct, addProduct, deleteProduct, toast } = useAdmin();
+  const { products, updateProduct, addProduct, deleteProduct, duplicateProductSafe, toast } = useAdmin();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('alle');
   const [status, setStatus] = useState<'alle' | 'aktiv' | 'inaktiv'>('alle');
+  const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [sort, setSort] = useState<'name' | 'preis-auf' | 'preis-ab' | 'bestand'>('name');
+  const [page, setPage] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
   const [delId, setDelId] = useState<string | null>(null);
   const [draft, setDraft] = useState({ shortTitle: '', vendor: 'GLAMLOOX®', price: '29,90', category: 'pflege', stock: '25' });
@@ -23,22 +33,48 @@ export default function Products() {
     let list = products;
     if (cat !== 'alle') list = list.filter((p) => p.category === cat);
     if (status !== 'alle') list = list.filter((p) => (status === 'aktiv' ? p.active : !p.active));
+    if (lowStockOnly) list = list.filter((p) => p.stock < 15);
     if (q.trim()) {
       const query = q.trim().toLowerCase();
       list = list.filter((p) => p.shortTitle.toLowerCase().includes(query) || p.vendor.toLowerCase().includes(query));
     }
+    if (sort === 'name') list = [...list].sort((a, b) => a.shortTitle.localeCompare(b.shortTitle));
+    if (sort === 'preis-auf') list = [...list].sort((a, b) => a.price - b.price);
+    if (sort === 'preis-ab') list = [...list].sort((a, b) => b.price - a.price);
+    if (sort === 'bestand') list = [...list].sort((a, b) => a.stock - b.stock);
     return list;
-  }, [products, cat, status, q]);
+  }, [products, cat, status, q, lowStockOnly, sort]);
+
+  const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const safePage = Math.min(page, pages - 1);
+  const pageItems = filtered.slice(safePage * PER_PAGE, safePage * PER_PAGE + PER_PAGE);
+  const inventoryValue = products.filter((p) => p.active).reduce((n, p) => n + p.price * p.stock, 0);
+
+  const exportCSV = () => {
+    const rows = [['ID', 'Name', 'Marke', 'Kategorie', 'Preis', 'Bestand', 'Badge', 'Aktiv'].join(';')];
+    filtered.forEach((p) => rows.push([p.id, p.shortTitle, p.vendor, p.category, p.price.toString().replace('.', ','), p.stock, p.badge ?? '', p.active ? 'ja' : 'nein'].join(';')));
+    const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'glamloox-produkte.csv';
+    a.click();
+    toast('CSV exportiert (' + filtered.length + ' Produkte)');
+  };
 
   return (
     <div className="anim-fade-up">
       <PageHeader
         title="Produkte"
-        sub={`${products.length} Produkte · ${products.filter((p) => p.active).length} aktiv · Preise & Badges direkt editierbar`}
+        sub={`${products.length} Produkte · ${products.filter((p) => p.active).length} aktiv · Inventarwert ${eur(inventoryValue)}`}
         action={
-          <Button onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" aria-hidden /> Produkt anlegen
-          </Button>
+          <div className="flex gap-2.5">
+            <Button variant="ghost" onClick={exportCSV}>
+              <Download className="h-4 w-4" aria-hidden /> CSV
+            </Button>
+            <Button onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" aria-hidden /> Produkt anlegen
+            </Button>
+          </div>
         }
       />
 
@@ -64,6 +100,12 @@ export default function Products() {
           </button>
         ))}
         <span className="mx-1 hidden h-6 w-px bg-mist-200 sm:block" aria-hidden />
+        <button
+          onClick={() => setLowStockOnly((v) => !v)}
+          className={`tap rounded-full px-3.5 py-1.5 text-[12.5px] font-bold ${lowStockOnly ? 'bg-amber-500 text-white' : 'border border-amber-200 bg-amber-50 text-amber-700'}`}
+        >
+          ⚠ Bestand &lt; 15
+        </button>
         {(['alle', 'aktiv', 'inaktiv'] as const).map((s) => (
           <button
             key={s}
@@ -73,15 +115,41 @@ export default function Products() {
             {s}
           </button>
         ))}
+        <span className="mx-1 hidden h-6 w-px bg-mist-200 sm:block" aria-hidden />
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as typeof sort)}
+          aria-label="Sortierung"
+          className="h-9 rounded-lg border border-mist-200 bg-white px-2.5 text-[12px] font-bold text-deep-900 outline-none"
+        >
+          <option value="name">Sortierung: Name</option>
+          <option value="preis-auf">Preis aufsteigend</option>
+          <option value="preis-ab">Preis absteigend</option>
+          <option value="bestand">Bestand (niedrigste)</option>
+        </select>
+        {/* Massen-Aktionen */}
+        <span className="mx-1 hidden h-6 w-px bg-mist-200 sm:block" aria-hidden />
+        <button
+          onClick={() => { products.forEach((p) => updateProduct(p.id, { active: true })); toast('Alle Produkte aktiviert'); }}
+          className="tap rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-[12px] font-bold text-emerald-700"
+        >
+          Alle aktivieren
+        </button>
+        <button
+          onClick={() => { products.forEach((p) => updateProduct(p.id, { active: false })); toast('Alle Produkte deaktiviert', 'info'); }}
+          className="tap rounded-full border border-mist-200 bg-white px-3.5 py-1.5 text-[12px] font-bold text-slate-500"
+        >
+          Alle deaktivieren
+        </button>
       </Card>
 
       {/* Tabelle */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left">
+          <table className="w-full min-w-[820px] text-left">
             <thead>
               <tr className="border-b border-mist-200 bg-mist-50 text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                <th className="px-5 py-3">Produkt</th>
+                <th className="px-4 py-3">Produkt</th>
                 <th className="px-3 py-3">Kategorie</th>
                 <th className="px-3 py-3">Preis (€)</th>
                 <th className="px-3 py-3">Badge</th>
@@ -91,11 +159,16 @@ export default function Products() {
               </tr>
             </thead>
             <tbody className="divide-y divide-mist-100">
-              {filtered.map((p) => (
+              {pageItems.map((p) => (
                 <tr key={p.id} className={`hover:bg-mist-50 ${p.active ? '' : 'opacity-50'}`}>
-                  <td className="px-5 py-3">
-                    <p className="text-[13px] font-bold text-deep-900">{p.shortTitle}</p>
-                    <p className="text-[11px] text-slate-400">{p.vendor}</p>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <img src={p.images[0]} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-bold text-deep-900">{catEmoji[p.category]} {p.shortTitle}</p>
+                        <p className="text-[11px] text-slate-400">{p.vendor}</p>
+                      </div>
+                    </div>
                   </td>
                   <td className="px-3 py-3 text-[12.5px] text-slate-500">{catLabels[p.category] ?? p.category}</td>
                   <td className="px-3 py-3">
@@ -125,21 +198,38 @@ export default function Products() {
                     </select>
                   </td>
                   <td className="px-3 py-3">
-                    <TextInput
-                      value={p.stock.toString()}
-                      onChange={(v) => {
-                        const n = parseInt(v.replace(/\D/g, ''), 10);
-                        if (!Number.isNaN(n)) updateProduct(p.id, { stock: n });
-                      }}
-                      ariaLabel={`Bestand von ${p.shortTitle}`}
-                      className={`h-9 w-[70px] ${p.stock < 15 ? 'border-amber-300 bg-amber-50 text-amber-700' : ''}`}
-                    />
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => updateProduct(p.id, { stock: Math.max(0, p.stock - 1) })}
+                        aria-label={`Bestand von ${p.shortTitle} verringern`}
+                        className="tap flex h-7 w-7 items-center justify-center rounded-md border border-mist-200 bg-white text-slate-500 hover:bg-mist-100"
+                      >
+                        <Minus className="h-3 w-3" aria-hidden />
+                      </button>
+                      <span className={`w-9 text-center text-[13px] font-bold tabular-nums ${p.stock < 15 ? 'text-amber-600' : 'text-deep-950'}`}>
+                        {p.stock}
+                      </span>
+                      <button
+                        onClick={() => updateProduct(p.id, { stock: p.stock + 1 })}
+                        aria-label={`Bestand von ${p.shortTitle} erhöhen`}
+                        className="tap flex h-7 w-7 items-center justify-center rounded-md border border-mist-200 bg-white text-slate-500 hover:bg-mist-100"
+                      >
+                        <Plus className="h-3 w-3" aria-hidden />
+                      </button>
+                    </div>
                   </td>
                   <td className="px-3 py-3">
                     <Toggle on={p.active} onChange={(v) => updateProduct(p.id, { active: v })} label={`${p.shortTitle} aktiv`} />
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex justify-end gap-1.5">
+                      <button
+                        onClick={() => { duplicateProductSafe(p.id); toast('Produkt dupliziert', 'info'); }}
+                        aria-label={`${p.shortTitle} duplizieren`}
+                        className="tap flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-royal-50 hover:text-royal-600"
+                      >
+                        <Copy className="h-4 w-4" aria-hidden />
+                      </button>
                       <button
                         onClick={() => updateProduct(p.id, { active: !p.active })}
                         aria-label={p.active ? `${p.shortTitle} deaktivieren` : `${p.shortTitle} aktivieren`}
@@ -162,6 +252,22 @@ export default function Products() {
           </table>
           {filtered.length === 0 && <EmptyRow text="Keine Produkte für diese Filter gefunden." />}
         </div>
+        {/* Pagination */}
+        {pages > 1 && (
+          <div className="flex items-center justify-between border-t border-mist-200 bg-mist-50 px-5 py-3">
+            <p className="text-[12px] font-medium text-slate-400">
+              {filtered.length} Produkte · Seite {safePage + 1} von {pages}
+            </p>
+            <div className="flex gap-1.5">
+              <Button size="sm" variant="ghost" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
+                Zurück
+              </Button>
+              <Button size="sm" variant="ghost" disabled={safePage >= pages - 1} onClick={() => setPage(safePage + 1)}>
+                Weiter
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Anlegen-Modal */}

@@ -31,7 +31,7 @@ const nav = [
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const { logout, toasts, dismissToast, orders } = useAdmin();
+  const { logout, toasts, dismissToast, orders, adminName } = useAdmin();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const openOrders = orders.filter((o) => o.status === 'bestätigt' || o.status === 'versandt').length;
 
@@ -123,7 +123,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             {openOrders} offene Bestellungen
           </Link>
           <span className="hidden items-center gap-2 rounded-full border border-mist-200 bg-white px-3 py-1.5 text-[12px] font-bold text-deep-900 shadow-card sm:flex">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden /> admin
+            <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden /> {adminName}
           </span>
         </header>
 

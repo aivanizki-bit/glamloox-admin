@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Search, Eye } from 'lucide-react';
+import { Search, Eye, Download, ReceiptText, ShoppingBag as ShoppingBagIcon, Euro } from 'lucide-react';
+import { Stat } from '../components/ui';
 import { useAdmin, eur, statusColor, type OrderStatus } from '../store/AdminStore';
 import { Card, PageHeader, Badge, Modal, EmptyRow, Button } from '../components/ui';
 import { productByIdSafe } from '../store/AdminStore';
@@ -11,6 +12,9 @@ export default function Orders() {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<'alle' | OrderStatus>('alle');
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [sort, setSort] = useState<'datum' | 'summe'>('datum');
+  const [page, setPage] = useState(0);
+  const PER_PAGE = 8;
 
   const filtered = useMemo(() => {
     let list = orders;
@@ -19,14 +23,40 @@ export default function Orders() {
       const query = q.trim().toLowerCase();
       list = list.filter((o) => o.id.toLowerCase().includes(query) || o.customer.toLowerCase().includes(query));
     }
+    list = [...list].sort((a, b) => (sort === 'datum' ? b.dateISO.localeCompare(a.dateISO) : b.total - a.total));
     return list;
-  }, [orders, status, q]);
+  }, [orders, status, q, sort]);
+
+  const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const safePage = Math.min(page, pages - 1);
+  const pageItems = filtered.slice(safePage * PER_PAGE, safePage * PER_PAGE + PER_PAGE);
+  const totalSum = orders.filter((o) => o.status !== 'storniert').reduce((n, o) => n + o.total, 0);
+  const avg = orders.length ? totalSum / orders.filter((o) => o.status !== 'storniert').length : 0;
+
+  const exportCSV = () => {
+    const rows = [['ID', 'Kundin', 'Datum', 'Status', 'Summe'].join(';')];
+    filtered.forEach((o) => rows.push([o.id, o.customer, o.dateISO, o.status, o.total.toString().replace('.', ',')].join(';')));
+    const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'glamloox-bestellungen.csv';
+    a.click();
+    toast('CSV exportiert (' + filtered.length + ')');
+  };
 
   const detail = orders.find((o) => o.id === detailId);
 
   return (
     <div className="anim-fade-up">
       <PageHeader title="Bestellungen" sub={`${orders.length} Demo-Bestellungen · Status direkt änderbar`} />
+
+      {/* KPIs */}
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat icon={<ShoppingBagIcon className="h-5 w-5" aria-hidden />} label="Bestellungen" value={orders.length.toString()} />
+        <Stat icon={<Euro className="h-5 w-5" aria-hidden />} label="Gesamtsumme" value={eur(totalSum)} tone="emerald" />
+        <Stat icon={<Euro className="h-5 w-5" aria-hidden />} label="Ø Bestellwert" value={eur(avg)} />
+        <Stat icon={<Eye className="h-5 w-5" aria-hidden />} label="Stornoquote" value={orders.length ? Math.round((orders.filter((o) => o.status === 'storniert').length / orders.length) * 100) + ' %' : '0 %'} tone="gold" />
+      </div>
 
       <Card className="mb-4 flex flex-wrap items-center gap-2.5 p-3.5">
         <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-mist-200 bg-mist-50 px-3">
@@ -48,6 +78,18 @@ export default function Orders() {
             {s}
           </button>
         ))}
+        <select
+          value={sort}
+          onChange={(e) => setSort(e.target.value as typeof sort)}
+          aria-label="Sortierung"
+          className="ml-auto h-9 rounded-lg border border-mist-200 bg-white px-2.5 text-[12px] font-bold text-deep-900 outline-none"
+        >
+          <option value="datum">Neueste zuerst</option>
+          <option value="summe">Summe (höchste)</option>
+        </select>
+        <Button variant="ghost" onClick={exportCSV}>
+          <Download className="h-4 w-4" aria-hidden /> CSV
+        </Button>
       </Card>
 
       <Card className="overflow-hidden">
@@ -65,7 +107,7 @@ export default function Orders() {
               </tr>
             </thead>
             <tbody className="divide-y divide-mist-100">
-              {filtered.map((o) => (
+              {pageItems.map((o) => (
                 <tr key={o.id} className="hover:bg-mist-50">
                   <td className="px-5 py-3 text-[13px] font-bold text-deep-900">{o.id}</td>
                   <td className="px-3 py-3 text-[12.5px] text-slate-600">{o.customer}</td>
@@ -106,6 +148,21 @@ export default function Orders() {
           </table>
           {filtered.length === 0 && <EmptyRow text="Keine Bestellungen für diese Filter." />}
         </div>
+        {pages > 1 && (
+          <div className="flex items-center justify-between border-t border-mist-200 bg-mist-50 px-5 py-3">
+            <p className="text-[12px] font-medium text-slate-400">
+              {filtered.length} Bestellungen · Seite {safePage + 1} von {pages}
+            </p>
+            <div className="flex gap-1.5">
+              <Button size="sm" variant="ghost" disabled={safePage === 0} onClick={() => setPage(safePage - 1)}>
+                Zurück
+              </Button>
+              <Button size="sm" variant="ghost" disabled={safePage >= pages - 1} onClick={() => setPage(safePage + 1)}>
+                Weiter
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Modal open={detailId !== null} onClose={() => setDetailId(null)} title={`Bestellung ${detail?.id ?? ''}`}>
@@ -120,6 +177,7 @@ export default function Orders() {
                 const p = productByIdSafe(it.productId);
                 return (
                   <div key={i} className="flex items-center gap-3 rounded-xl bg-mist-50 px-3.5 py-2.5">
+                    {p && <img src={p.images[0]} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-lg object-cover" />}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-bold text-deep-900">{p?.shortTitle ?? it.productId}</p>
                       <p className="text-[11px] text-slate-400">
@@ -135,7 +193,13 @@ export default function Orders() {
               <span className="text-[14px] font-bold text-deep-950">Gesamt</span>
               <span className="text-[16px] font-extrabold tabular-nums text-deep-950">{eur(detail.total)}</span>
             </div>
-            <div className="mt-4 flex justify-end">
+            <div className="mt-4 flex items-center justify-between">
+              <button
+                onClick={() => toast('Demo: Rechnung würde als PDF geladen', 'info')}
+                className="tap flex items-center gap-1.5 rounded-full border border-mist-200 bg-white px-3.5 py-2 text-[12px] font-bold text-deep-900"
+              >
+                <ReceiptText className="h-4 w-4 text-royal-600" aria-hidden /> Rechnung als PDF (Demo)
+              </button>
               <Button variant="ghost" onClick={() => setDetailId(null)}>
                 Schließen
               </Button>

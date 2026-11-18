@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Lock, User as UserIcon, Eye, EyeOff, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Lock, User as UserIcon, Eye, EyeOff, ExternalLink, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useAdmin } from '../store/AdminStore';
 import { Button } from '../components/ui';
 
@@ -10,12 +10,16 @@ export default function Login() {
   const [pass, setPass] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState(false);
+  const [capsOn, setCapsOn] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [shake, setShake] = useState(0);
 
   if (authed) return <Navigate to="/" replace />;
 
   const submit = () => {
-    if (!login(user, pass)) {
+    if (!login(user, pass, remember)) {
       setError(true);
+      setShake((n) => n + 1);
       setTimeout(() => setError(false), 2600);
     }
   };
@@ -32,8 +36,7 @@ export default function Login() {
       />
       <div className="pointer-events-none absolute inset-0 opacity-30" style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.09) 1px, transparent 1px)', backgroundSize: '26px 26px' }} aria-hidden />
 
-      <div className="anim-fade-up relative w-full max-w-[400px]">
-        {/* Бренд */}
+      <div key={shake} className={shake > 0 ? 'anim-shake relative w-full max-w-[400px]' : 'relative w-full max-w-[400px]'}>
         <div className="mb-6 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-royal-400 to-royal-600 text-[24px] font-extrabold text-white shadow-float">
             A
@@ -55,9 +58,10 @@ export default function Login() {
             }}
             className="mt-5 space-y-3"
           >
-            <div className={`flex h-12 items-center gap-3 rounded-xl border px-4 ${error ? 'border-red-400 bg-red-500/10' : 'border-white/20 bg-white/10'}`}>
+            <div className="flex h-12 items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 focus-within:border-royal-400">
               <UserIcon className="h-[18px] w-[18px] shrink-0 text-royal-300" aria-hidden />
               <input
+                autoFocus
                 value={user}
                 onChange={(e) => setUser(e.target.value)}
                 placeholder="Benutzername"
@@ -66,12 +70,13 @@ export default function Login() {
                 className="w-full bg-transparent text-[14px] font-medium text-white outline-none placeholder:text-white/40"
               />
             </div>
-            <div className={`flex h-12 items-center gap-3 rounded-xl border px-4 ${error ? 'border-red-400 bg-red-500/10' : 'border-white/20 bg-white/10'}`}>
+            <div className={`flex h-12 items-center gap-3 rounded-xl border px-4 focus-within:border-royal-400 ${error ? 'border-red-400 bg-red-500/10' : 'border-white/20 bg-white/10'}`}>
               <Lock className="h-[18px] w-[18px] shrink-0 text-royal-300" aria-hidden />
               <input
                 type={showPass ? 'text' : 'password'}
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
+                onKeyUp={(e) => setCapsOn(e.getModifierState?.('CapsLock') ?? false)}
                 placeholder="Passwort"
                 aria-label="Passwort"
                 autoComplete="current-password"
@@ -87,11 +92,27 @@ export default function Login() {
               </button>
             </div>
 
+            {capsOn && (
+              <p className="flex items-center gap-1.5 text-[11.5px] font-semibold text-amber-300">
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden /> Feststelltaste ist aktiv
+              </p>
+            )}
+
             {error && (
               <p className="anim-fade-in rounded-xl bg-red-500/20 px-3.5 py-2.5 text-[12.5px] font-semibold text-red-200">
                 Zugangsdaten falsch – bitte prüfe Benutzername & Passwort.
               </p>
             )}
+
+            <label className="flex cursor-pointer items-center gap-2.5 px-1 py-0.5">
+              <span
+                onClick={() => setRemember((v) => !v)}
+                className={`flex h-[20px] w-[36px] shrink-0 rounded-full transition-colors ${remember ? 'bg-royal-500' : 'bg-white/20'}`}
+              >
+                <span className={`mt-[2px] h-4 w-4 rounded-full bg-white shadow transition-all ${remember ? 'ml-[18px]' : 'ml-[2px]'}`} />
+              </span>
+              <span className="text-[12px] text-white/70">Auf diesem Gerät angemeldet bleiben</span>
+            </label>
 
             <Button type="submit" className="h-12 w-full rounded-xl text-[14.5px]">
               <ShieldCheck className="h-[18px] w-[18px]" aria-hidden /> Anmelden
@@ -113,7 +134,7 @@ export default function Login() {
           <ExternalLink className="h-4 w-4" aria-hidden /> Client-App ansehen
         </a>
         <p className="mt-3 text-center text-[10px] text-white/30">
-          Interactive Concept Demo · Keine echten Kundendaten
+          Interactive Concept Demo · v2.1 · Keine echten Kundendaten
         </p>
       </div>
     </div>

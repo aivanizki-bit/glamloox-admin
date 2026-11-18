@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
-import { Download, Upload, RotateCcw, ExternalLink, Info, ShieldCheck, CheckCircle2, XCircle } from 'lucide-react';
+import { Download, Upload, RotateCcw, ExternalLink, Info, ShieldCheck, CheckCircle2, XCircle, Package as PackageIcon, ShoppingBag as OrderIcon, Users as PostIcon, CalendarDays as EventIcon, Keyboard as KeyboardIcon } from 'lucide-react';
 import { useAdmin } from '../store/AdminStore';
+import { Stat } from '../components/ui';
 import { Card, PageHeader, Button } from '../components/ui';
 
 export default function SettingsPage() {
-  const { resetAll, exportJSON, importJSON, toast } = useAdmin();
+  const { resetAll, exportJSON, importJSON, toast, adminName, setAdminName, adminPass, setAdminPass, products, orders, posts, events, courses } = useAdmin();
   const fileRef = useRef<HTMLInputElement>(null);
   const [importState, setImportState] = useState<'idle' | 'ok' | 'error'>('idle');
   const [confirmReset, setConfirmReset] = useState(false);
@@ -114,6 +115,60 @@ export default function SettingsPage() {
           )}
         </div>
       </Card>
+
+      {/* Admin-Profil + Passwort */}
+      <Card className="mb-4 overflow-hidden">
+        <div className="border-b border-mist-200 bg-mist-50 px-5 py-3">
+          <h2 className="text-[14px] font-bold text-deep-900">Admin-Konto</h2>
+        </div>
+        <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+          <div>
+            <p className="text-[11.5px] font-semibold text-slate-400">Anzeigename</p>
+            <input
+              defaultValue={adminName}
+              onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== adminName) { setAdminName(v); toast('Name gespeichert ✓'); } }}
+              aria-label="Admin-Anzeigename"
+              className="mt-1 h-10 w-full rounded-xl border border-mist-200 bg-white px-3 text-[13.5px] font-semibold text-deep-950 outline-none focus:border-royal-500"
+            />
+          </div>
+          <div>
+            <p className="text-[11.5px] font-semibold text-slate-400">Passwort ändern (Demo)</p>
+            <div className="mt-1 flex gap-2">
+              <input
+                type="password"
+                defaultValue={adminPass}
+                onBlur={(e) => { const v = e.target.value; if (v && v !== adminPass) { setAdminPass(v); toast('Passwort geändert ✓ – gilt beim nächsten Login'); } }}
+                aria-label="Neues Passwort"
+                className="h-10 w-full rounded-xl border border-mist-200 bg-white px-3 text-[13.5px] font-semibold text-deep-950 outline-none focus:border-royal-500"
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* Datenstatistik */}
+      <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat icon={<PackageIcon className="h-5 w-5" aria-hidden />} label="Produkte" value={products.length.toString()} />
+        <Stat icon={<OrderIcon className="h-5 w-5" aria-hidden />} label="Bestellungen" value={orders.length.toString()} tone="emerald" />
+        <Stat icon={<PostIcon className="h-5 w-5" aria-hidden />} label="Beiträge" value={posts.length.toString()} tone="gold" />
+        <Stat icon={<EventIcon className="h-5 w-5" aria-hidden />} label="Events + Kurse" value={(events.length + courses.length).toString()} />
+      </div>
+
+      {/* System-Info + Tastatur */}
+      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Card className="p-3.5">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">System-Info</p>
+          <p className="mt-1 text-[12px] text-slate-500">
+            Admin v2.1 · Daten: {Math.round(JSON.stringify({ products, orders }).length / 1024)} KB lokal gespeichert
+          </p>
+        </Card>
+        <Card className="p-3.5">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+            <KeyboardIcon className="h-3.5 w-3.5" aria-hidden /> Tastatur
+          </p>
+          <p className="mt-1 text-[12px] text-slate-500">„Esc" schließt Dialoge · „Enter" sendet Formulare</p>
+        </Card>
+      </div>
 
       {/* Links & Info */}
       <Card className="overflow-hidden">

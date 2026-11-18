@@ -22,6 +22,7 @@ export interface AdminMember extends Member {
 }
 export interface AdminPost extends Post {
   hidden: boolean;
+  pinned: boolean;
 }
 export type OrderStatus = 'bestätigt' | 'versandt' | 'geliefert' | 'storniert';
 export interface AdminOrder {
@@ -48,6 +49,10 @@ export interface AdminState {
   orders: AdminOrder[];
   outbox: AdminNotification[];
   rewardPoints: number;
+  adminName: string;
+  adminPass: string;
+  levelConfig: { name: string; min: number; perks: string[] }[];
+  punkteRegeln: { euroProPunkt: number; bonusOrder: number; bonusPost: number };
 }
 
 // ── Seed aus den Prototyp-Daten ───────────────────────
@@ -76,7 +81,7 @@ function buildSeed(): AdminState {
     courses: seedCourses.map((c) => ({ ...c, published: true, enrollments: c.students })),
     events: seedEvents.map((e) => ({ ...e, published: true })),
     members: seedMembers.map((m) => ({ ...m, verified: !!m.academy })),
-    posts: seedPosts.map((p) => ({ ...p, hidden: false })),
+    posts: seedPosts.map((p) => ({ ...p, hidden: false, pinned: false })),
     orders: seedOrders,
     outbox: [
       {
@@ -88,6 +93,15 @@ function buildSeed(): AdminState {
       },
     ],
     rewardPoints: demoUser.rewardPoints,
+    adminName: 'Admin',
+    adminPass: 'glam',
+    levelConfig: [
+      { name: 'Gold', min: 300, perks: ['5 % Dauerbonus auf GLAMLOOX®-Eigenprodukte'] },
+      { name: 'Platin', min: 500, perks: ['Gratis-Versand ab 50 €', 'Early Access für Neuheiten'] },
+      { name: 'Diamant', min: 600, perks: ['Verifiziertes Profi-Badge in der Community'] },
+      { name: 'Exklusiv', min: 1000, perks: ['Kostenlose Express-Lieferung', 'Persönliche Ansprechpartnerin'] },
+    ],
+    punkteRegeln: { euroProPunkt: 1, bonusOrder: 50, bonusPost: 25 },
   };
 }
 
@@ -114,7 +128,7 @@ export interface ToastItem {
 
 export interface AdminContextValue extends AdminState {
   authed: boolean;
-  login: (user: string, pass: string) => boolean;
+  login: (user: string, pass: string, remember?: boolean) => boolean;
   logout: () => void;
   toasts: ToastItem[];
   toast: (msg: string, kind?: ToastItem['kind']) => void;
@@ -140,6 +154,15 @@ export interface AdminContextValue extends AdminState {
   deleteNotification: (id: string) => void;
   // Rewards
   setRewardPoints: (v: number) => void;
+  setAdminName: (v: string) => void;
+  setAdminPass: (v: string) => void;
+  togglePostPinned: (id: string) => void;
+  updateLevel: (index: number, patch: { min?: number }) => void;
+  setPunkteRegeln: (patch: Partial<AdminState['punkteRegeln']>) => void;
+  duplicateProductSafe: (id: string) => void;
+  duplicateEvent: (id: string) => void;
+  duplicateCourse: (id: string) => void;
+  adjustCourseEnrollments: (id: string, delta: number) => void;
   // System
   resetAll: () => void;
   exportJSON: () => string;
@@ -150,9 +173,13 @@ const Ctx = createContext<AdminContextValue | null>(null);
 
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AdminState>(load);
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem('glx-admin-auth') === '1');
+  const [authed, setAuthed] = useState(() => sessionStorage.getItem('glx-admin-auth') === '1' || localStorage.getItem('glx-admin-auth') === '1');
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const toastId = { current: 1 };
+  const stateRef = { current: state as AdminState };
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     try {
@@ -169,16 +196,18 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   }, []);
   const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
-  const login = useCallback((user: string, pass: string) => {
-    const ok = user.trim().toLowerCase() === 'admin' && pass === 'glam';
+  const login = useCallback((user: string, pass: string, remember = true) => {
+    const s = stateRef.current;
+    const ok = user.trim().toLowerCase() === 'admin' && pass === s.adminPass;
     if (ok) {
-      sessionStorage.setItem('glx-admin-auth', '1');
+      (remember ? localStorage : sessionStorage).setItem('glx-admin-auth', '1');
       setAuthed(true);
     }
     return ok;
   }, []);
   const logout = useCallback(() => {
     sessionStorage.removeItem('glx-admin-auth');
+    localStorage.removeItem('glx-admin-auth');
     setAuthed(false);
   }, []);
 
@@ -215,6 +244,12 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         ],
       })),
     deleteProduct: (id) => setState((s) => ({ ...s, products: s.products.filter((p) => p.id !== id) })),
+    duplicateProductSafe: (id) =>
+      setState((s) => {
+        const orig = s.products.find((p) => p.id === id);
+        if (!orig) return s;
+        return { ...s, products: [{ ...orig, id: 'kopie-' + Date.now(), shortTitle: orig.shortTitle + ' (Kopie)', title: orig.title + ' (Kopie)', active: false }, ...s.products] };
+      }),
     updateCourse: (id, patch) =>
       setState((s) => ({ ...s, courses: s.courses.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
     updateEvent: (id, patch) =>
@@ -253,6 +288,33 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       })),
     deleteNotification: (id) => setState((s) => ({ ...s, outbox: s.outbox.filter((n) => n.id !== id) })),
     setRewardPoints: (v) => setState((s) => ({ ...s, rewardPoints: Math.max(0, v) })),
+    setAdminName: (v) => setState((s) => ({ ...s, adminName: v || 'Admin' })),
+    setAdminPass: (v) => setState((s) => ({ ...s, adminPass: v })),
+    togglePostPinned: (id) =>
+      setState((s) => ({ ...s, posts: s.posts.map((p) => (p.id === id ? { ...p, pinned: !p.pinned } : p)) })),
+    updateLevel: (index, patch) =>
+      setState((s) => ({
+        ...s,
+        levelConfig: s.levelConfig.map((l, i) => (i === index ? { ...l, ...patch } : l)),
+      })),
+    setPunkteRegeln: (patch) => setState((s) => ({ ...s, punkteRegeln: { ...s.punkteRegeln, ...patch } })),
+    duplicateEvent: (id) =>
+      setState((s) => {
+        const orig = s.events.find((e) => e.id === id);
+        if (!orig) return s;
+        return { ...s, events: [{ ...orig, id: 'ev-kopie-' + Date.now(), title: orig.title + ' (Kopie)' }, ...s.events] };
+      }),
+    duplicateCourse: (id) =>
+      setState((s) => {
+        const orig = s.courses.find((c) => c.id === id);
+        if (!orig) return s;
+        return { ...s, courses: [{ ...orig, id: 'kopie-' + Date.now(), title: orig.title + ' (Kopie)', shortTitle: orig.shortTitle + ' (Kopie)', published: false, students: 0, enrollments: 0 }, ...s.courses] };
+      }),
+    adjustCourseEnrollments: (id, delta) =>
+      setState((s) => ({
+        ...s,
+        courses: s.courses.map((c) => (c.id === id ? { ...c, enrollments: Math.max(0, c.enrollments + delta), students: Math.max(0, c.students + delta) } : c)),
+      })),
     resetAll: () => {
       localStorage.removeItem(KEY);
       setState(buildSeed());
