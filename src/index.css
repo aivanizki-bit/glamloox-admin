@@ -1,0 +1,56 @@
+@import 'tailwindcss';
+
+@theme {
+  /* GLAMLOOX Corporate: Royal Blue · Deep Blue · Light Blue */
+  --color-royal-50: #EEF3FF;
+  --color-royal-100: #DFE9FF;
+  --color-royal-200: #C5D6FE;
+  --color-royal-300: #A3BAFC;
+  --color-royal-400: #7A96F8;
+  --color-royal-500: #4C6EF5;
+  --color-royal-600: #2E5BF0;
+  --color-royal-700: #1E44DD;
+  --color-royal-800: #1D38B8;
+  --color-royal-900: #1C3193;
+
+  --color-deep-700: #14267A;
+  --color-deep-800: #0F1F63;
+  --color-deep-900: #0A1E5A;
+  --color-deep-950: #061238;
+
+  --color-mist-50: #F6F9FF;
+  --color-mist-100: #EFF4FF;
+  --color-mist-200: #E3ECFD;
+
+  --color-gold-400: #E8B54D;
+  --color-gold-500: #D9A83B;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --shadow-card: 0 1px 2px rgba(10, 30, 90, 0.05), 0 6px 18px rgba(10, 30, 90, 0.07);
+  --shadow-float: 0 4px 12px rgba(10, 30, 90, 0.10), 0 16px 40px rgba(10, 30, 90, 0.14);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background: #F6F9FF;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.anim-fade-up { animation: fadeUp 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-fade-in { animation: fadeIn 0.25s ease both; }
+
+:focus-visible {
+  outline: 2.5px solid #2E5BF0;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
