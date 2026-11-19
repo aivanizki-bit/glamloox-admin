@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Radio,
   ShieldCheck,
+  Sparkles,
   RefreshCw,
   Activity,
 } from 'lucide-react';
@@ -46,6 +47,7 @@ export default function Dashboard() {
   ];
 
   const quickActions = [
+    { to: '/aktionen', label: 'Aktion starten', icon: Sparkles },
     { to: '/produkte', label: 'Produkt anlegen', icon: Package },
     { to: '/events', label: 'Event anlegen', icon: Radio },
     { to: '/mitteilungen', label: 'Mitteilung senden', icon: Radio },

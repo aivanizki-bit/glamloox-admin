@@ -24,6 +24,25 @@ export interface AdminPost extends Post {
   hidden: boolean;
   pinned: boolean;
 }
+export type PromoType = 'prozent' | 'fix' | 'code' | 'versand' | 'bundle';
+export interface Promotion {
+  id: string;
+  name: string;
+  type: PromoType;
+  value: number; // % (prozent/code) · € (fix) · Mindestbestellwert (versand) · % Kurs-Rabatt (bundle)
+  code: string;
+  scope: 'alles' | 'kategorie' | 'eigenmarken';
+  category: string;
+  startDate: string;
+  endDate: string;
+  active: boolean;
+  occasion: string; // weihnachten | blackfriday | valentinstag | muttertag | halloween | ostern | sommer | custom
+  bannerText: string;
+  emoji: string;
+  bundleProduct: string;
+  bundleCourse: string;
+}
+
 export type OrderStatus = 'bestätigt' | 'versandt' | 'geliefert' | 'storniert';
 export interface AdminOrder {
   id: string;
@@ -47,6 +66,7 @@ export interface AdminState {
   members: AdminMember[];
   posts: AdminPost[];
   orders: AdminOrder[];
+  promotions: Promotion[];
   outbox: AdminNotification[];
   rewardPoints: number;
   adminName: string;
@@ -83,6 +103,42 @@ function buildSeed(): AdminState {
     members: seedMembers.map((m) => ({ ...m, verified: !!m.academy })),
     posts: seedPosts.map((p) => ({ ...p, hidden: false, pinned: false })),
     orders: seedOrders,
+    promotions: [
+      {
+        id: 'akt-weihnachten',
+        name: 'Weihnachtsaktion',
+        type: 'prozent',
+        value: 15,
+        code: '',
+        scope: 'alles',
+        category: '',
+        startDate: '2026-11-19',
+        endDate: '2026-12-24',
+        active: true,
+        occasion: 'weihnachten',
+        bannerText: 'Adventsspezial: 15 % auf alles – bis Heiligabend',
+        emoji: '🎄',
+        bundleProduct: '',
+        bundleCourse: '',
+      },
+      {
+        id: 'akt-bf-weekend',
+        name: 'Black Weekend',
+        type: 'code',
+        value: 25,
+        code: 'BLACK25',
+        scope: 'alles',
+        category: '',
+        startDate: '2026-11-27',
+        endDate: '2026-11-30',
+        active: true,
+        occasion: 'blackfriday',
+        bannerText: 'Black Weekend: Code BLACK25 = 25 %',
+        emoji: '🖤',
+        bundleProduct: '',
+        bundleCourse: '',
+      },
+    ],
     outbox: [
       {
         id: 'ob1',
@@ -159,6 +215,9 @@ export interface AdminContextValue extends AdminState {
   togglePostPinned: (id: string) => void;
   updateLevel: (index: number, patch: { min?: number }) => void;
   setPunkteRegeln: (patch: Partial<AdminState['punkteRegeln']>) => void;
+  addPromotion: (p: Omit<Promotion, 'id'>) => void;
+  updatePromotion: (id: string, patch: Partial<Promotion>) => void;
+  deletePromotion: (id: string) => void;
   duplicateProductSafe: (id: string) => void;
   duplicateEvent: (id: string) => void;
   duplicateCourse: (id: string) => void;
@@ -244,6 +303,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         ],
       })),
     deleteProduct: (id) => setState((s) => ({ ...s, products: s.products.filter((p) => p.id !== id) })),
+    addPromotion: (p) =>
+      setState((s) => ({ ...s, promotions: [{ ...p, id: 'akt-' + Date.now() }, ...s.promotions] })),
+    updatePromotion: (id, patch) =>
+      setState((s) => ({ ...s, promotions: s.promotions.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+    deletePromotion: (id) => setState((s) => ({ ...s, promotions: s.promotions.filter((p) => p.id !== id) })),
     duplicateProductSafe: (id) =>
       setState((s) => {
         const orig = s.products.find((p) => p.id === id);

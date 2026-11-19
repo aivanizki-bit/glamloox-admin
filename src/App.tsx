@@ -11,6 +11,7 @@ import Orders from './pages/Orders';
 import Notifications from './pages/Notifications';
 import RewardsPage from './pages/RewardsPage';
 import SettingsPage from './pages/SettingsPage';
+import Aktionen from './pages/Aktionen';
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { authed } = useAdmin();
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/produkte" element={<Protected><Products /></Protected>} />
           <Route path="/kurse" element={<Protected><Courses /></Protected>} />
           <Route path="/events" element={<Protected><Events /></Protected>} />
+          <Route path="/aktionen" element={<Protected><Aktionen /></Protected>} />
           <Route path="/community" element={<Protected><CommunityPage /></Protected>} />
           <Route path="/bestellungen" element={<Protected><Orders /></Protected>} />
           <Route path="/mitteilungen" element={<Protected><Notifications /></Protected>} />

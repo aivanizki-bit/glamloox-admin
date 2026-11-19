@@ -6,6 +6,7 @@ import {
   Package,
   GraduationCap,
   CalendarDays,
+  Sparkles as SparklesIcon,
   Users,
   ShoppingBag,
   Bell,
@@ -76,7 +77,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           <nav className="mt-4 flex-1 space-y-6" aria-label="Admin-Navigation">
             {[
               { group: 'Übersicht', items: [nav[0]] },
-              { group: 'Katalog & Inhalte', items: [nav[1], nav[2], nav[3]] },
+              { group: 'Katalog & Inhalte', items: [nav[1], nav[2], nav[3], { to: '/aktionen', label: 'Aktionen', icon: SparklesIcon }] },
               { group: 'Community & Order', items: [nav[4], nav[5]] },
               { group: 'System', items: [nav[6], nav[7], nav[8]] },
             ].map(({ group, items }) => (
