@@ -34,8 +34,8 @@ export default function Orders() {
   const avg = orders.length ? totalSum / orders.filter((o) => o.status !== 'storniert').length : 0;
 
   const exportCSV = () => {
-    const rows = [['ID', 'Kundin', 'Datum', 'Status', 'Summe'].join(';')];
-    filtered.forEach((o) => rows.push([o.id, o.customer, o.dateISO, o.status, o.total.toString().replace('.', ',')].join(';')));
+    const rows = [['ID', 'Kundin', 'Datum', 'Status', 'Summe', 'Positionen'].join(';')];
+    filtered.forEach((o) => rows.push([o.id, o.customer, o.dateISO, o.status, o.total.toString().replace('.', ','), o.items.map((it) => it.qty + 'x ' + it.productId).join(' | ')].join(';')));
     const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -169,8 +169,26 @@ export default function Orders() {
         {detail && (
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-[13px] font-semibold text-slate-500">{detail.customer}</p>
+              <div>
+                <p className="text-[13px] font-semibold text-slate-500">{detail.customer}</p>
+                <p className="text-[11px] text-slate-400">RE-2026-{detail.id.replace(/\D/g, '')} · {detail.customer.toLowerCase().replace(/ /g, '·')}@demo.de</p>
+              </div>
               <Badge className={statusColor[detail.status]}>{detail.status}</Badge>
+            </div>
+            {/* B3: Status-Timeline */}
+            <div className="mb-3 flex items-center gap-1.5 rounded-xl bg-mist-50 px-3.5 py-2.5">
+              {['bestätigt', 'versandt', 'geliefert'].map((st, i) => {
+                const order = ['bestätigt', 'versandt', 'geliefert'];
+                const idx = order.indexOf(detail.status);
+                const reached = detail.status === 'storniert' ? false : i <= idx;
+                return (
+                  <div key={st} className="flex flex-1 items-center gap-1.5">
+                    <span className={'h-2 w-2 shrink-0 rounded-full ' + (reached ? 'bg-royal-600' : 'bg-mist-200')} aria-hidden />
+                    <span className={'text-[10.5px] font-bold capitalize ' + (reached ? 'text-deep-900' : 'text-slate-300')}>{st}</span>
+                    {i < 2 && <span className={'h-px flex-1 ' + (i < idx ? 'bg-royal-500' : 'bg-mist-200')} aria-hidden />}
+                  </div>
+                );
+              })}
             </div>
             <div className="space-y-2.5">
               {detail.items.map((it, i) => {

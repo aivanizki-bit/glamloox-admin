@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Sparkles,
@@ -16,6 +16,8 @@ import {
   ExternalLink,
   Menu,
   X,
+  Keyboard,
+  Search,
 } from 'lucide-react';
 import { useAdmin } from '../store/AdminStore';
 import { Toasts } from './ui';
@@ -32,8 +34,42 @@ const nav = [
   { to: '/einstellungen', label: 'Einstellungen', icon: SettingsIcon },
 ];
 
+const PAGE_TITLES: Record<string, string> = {
+  '/': 'Dashboard',
+  '/produkte': 'Produkte',
+  '/kurse': 'Academy-Kurse',
+  '/events': 'Live-Events',
+  '/aktionen': 'Aktionen',
+  '/community': 'Community',
+  '/bestellungen': 'Bestellungen',
+  '/mitteilungen': 'Mitteilungen',
+  '/rewards': 'Rewards',
+  '/einstellungen': 'Einstellungen',
+};
+
 export default function Layout({ children }: { children: ReactNode }) {
-  const { logout, toasts, dismissToast, orders, adminName } = useAdmin();
+  const { logout, toasts, dismissToast, orders, adminName, products, posts, promotions, members } = useAdmin();
+  const location = useLocation();
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // A1: Dokumenttitel pro Seite
+  useEffect(() => {
+    document.title = `${PAGE_TITLES[location.pathname] ?? 'Admin'} · GLAMLOOX Admin`;
+  }, [location.pathname]);
+
+  // A3: «?» öffnet Hilfe, «k» fokussiert Suche, Esc schließt
+  const [helpOpen, setHelpOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === '?') setHelpOpen((v) => !v);
+      if (e.key === 'k') { e.preventDefault(); searchRef.current?.focus(); }
+      if (e.key === 'Escape') setHelpOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const openOrders = orders.filter((o) => o.status === 'bestätigt' || o.status === 'versandt').length;
 
@@ -156,9 +192,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           >
             <Menu className="h-5 w-5" aria-hidden />
           </button>
-          <p className="flex-1 truncate text-[13px] font-semibold text-slate-400">
-            Management Console · <span className="text-deep-900">GLAMLOOX App-Prototyp</span>
-          </p>
+          <GlobalSearch products={products} posts={posts} promotions={promotions} orders={orders} members={members} searchRef={searchRef} />
           <Link
             to="/bestellungen"
             className="tap hidden items-center gap-1.5 rounded-full bg-royal-50 px-3 py-1.5 text-[12px] font-bold text-royal-700 sm:flex"
@@ -184,7 +218,112 @@ export default function Layout({ children }: { children: ReactNode }) {
         </main>
       </div>
 
+      {/* A3: Tastatur-Hilfe */}
+      {helpOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-deep-950/50 backdrop-blur-sm" onClick={() => setHelpOpen(false)} aria-hidden />
+          <div className="anim-fade-up relative w-full max-w-md rounded-3xl border border-mist-200 bg-white p-5 shadow-float">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-[16px] font-extrabold text-deep-950">
+                <Keyboard className="h-[18px] w-[18px] text-royal-600" aria-hidden /> Tastatur-Kürzel
+              </h2>
+              <button onClick={() => setHelpOpen(false)} aria-label="Hilfe schließen" className="tap flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-mist-100">
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            <div className="space-y-2">
+              {[
+                ['k', 'Globale Suche fokussieren'],
+                ['?', 'Diese Hilfe anzeigen'],
+                ['Esc', 'Dialoge schließen'],
+                ['Enter', 'Formulare absenden'],
+              ].map(([key, desc]) => (
+                <div key={key} className="flex items-center justify-between rounded-xl bg-mist-50 px-4 py-2.5">
+                  <span className="text-[13px] font-semibold text-slate-600">{desc}</span>
+                  <kbd className="rounded-lg border border-mist-200 bg-white px-2.5 py-1 font-mono text-[12px] font-bold text-deep-900 shadow-card">{key}</kbd>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       <Toasts toasts={toasts} dismiss={dismissToast} />
+    </div>
+  );
+}
+
+
+// A2: Globale Suche über alle Entitäten
+function GlobalSearch({ products, posts, promotions, orders, members, searchRef }: {
+  products: { id: string; shortTitle: string; vendor: string }[];
+  posts: { id: string; title?: string; text: string }[];
+  promotions: { id: string; name: string }[];
+  orders: { id: string; customer: string }[];
+  members: { id: string; name: string }[];
+  searchRef: React.RefObject<HTMLInputElement | null>;
+}) {
+  const [q, setQ] = useState('');
+  const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const query = q.trim().toLowerCase();
+  const hits = useMemo(() => {
+    if (!query) return [];
+    const out: { label: string; sub: string; to: string; group: string }[] = [];
+    products.filter((p) => p.shortTitle.toLowerCase().includes(query) || p.vendor.toLowerCase().includes(query)).slice(0, 3)
+      .forEach((p) => out.push({ label: p.shortTitle, sub: p.vendor + ' · Produkt', to: '/produkte', group: 'Produkte' }));
+    promotions.filter((p) => p.name.toLowerCase().includes(query)).slice(0, 2)
+      .forEach((p) => out.push({ label: p.name, sub: 'Aktion', to: '/aktionen', group: 'Aktionen' }));
+    orders.filter((o) => o.id.toLowerCase().includes(query) || o.customer.toLowerCase().includes(query)).slice(0, 2)
+      .forEach((o) => out.push({ label: o.id + ' · ' + o.customer, sub: 'Bestellung', to: '/bestellungen', group: 'Bestellungen' }));
+    posts.filter((p) => (p.title ?? p.text).toLowerCase().includes(query)).slice(0, 2)
+      .forEach((p) => out.push({ label: (p.title ?? p.text).slice(0, 42) + '…', sub: 'Beitrag', to: '/community', group: 'Community' }));
+    members.filter((m) => m.name.toLowerCase().includes(query)).slice(0, 2)
+      .forEach((m) => out.push({ label: m.name, sub: 'Mitglied', to: '/community', group: 'Community' }));
+    return out.slice(0, 8);
+  }, [query, products, posts, promotions, orders, members]);
+
+  return (
+    <div className="relative min-w-0 flex-1">
+      <div className="flex h-9 max-w-[420px] items-center gap-2 rounded-xl border border-mist-200 bg-mist-50 px-3 focus-within:border-royal-400 focus-within:bg-white">
+        <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+        <input
+          ref={searchRef}
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 180)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && hits[0]) { navigate(hits[0].to); setOpen(false); setQ(''); }
+            if (e.key === 'Escape') { setQ(''); setOpen(false); }
+          }}
+          placeholder="Alles durchsuchen … (k)"
+          aria-label="Admin-Globalsuche"
+          className="h-full w-full bg-transparent text-[13px] font-medium outline-none placeholder:text-slate-400"
+        />
+        <kbd className="hidden rounded border border-mist-200 bg-white px-1.5 text-[10px] font-bold text-slate-400 sm:block">k</kbd>
+      </div>
+      {open && query && (
+        <div className="absolute left-0 top-11 z-50 w-[420px] max-w-[85vw] overflow-hidden rounded-2xl border border-mist-200 bg-white shadow-float">
+          {hits.length === 0 ? (
+            <p className="px-4 py-4 text-[12.5px] text-slate-400">Nichts gefunden für „{q}“</p>
+          ) : (
+            hits.map((h, i) => (
+              <button
+                key={i}
+                onMouseDown={() => { navigate(h.to); setQ(''); setOpen(false); }}
+                className="flex w-full items-center gap-3 border-b border-mist-100 px-4 py-2.5 text-left last:border-0 hover:bg-mist-50"
+              >
+                <span className="w-20 shrink-0 text-[10px] font-bold uppercase tracking-wide text-royal-600">{h.group}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-bold text-deep-900">{h.label}</span>
+                  <span className="block truncate text-[11px] text-slate-400">{h.sub}</span>
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

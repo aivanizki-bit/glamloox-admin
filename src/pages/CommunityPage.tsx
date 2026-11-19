@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ShieldCheck, Trash2, MessageCircle, Heart, Pin, Search, EyeOff } from 'lucide-react';
 import { useAdmin, type AdminPost } from '../store/AdminStore';
-import { Card, PageHeader, Badge, Toggle, Stat, EmptyRow } from '../components/ui';
+import { Card, PageHeader, Badge, Toggle, Stat, EmptyRow, Modal, Button } from '../components/ui';
 
 const typeLabels = { ergebnis: 'Ergebnis', frage: 'Frage', tipp: 'Tipp' };
 const typeColors = { ergebnis: 'bg-royal-600', frage: 'bg-amber-500', tipp: 'bg-emerald-500' };
@@ -13,6 +13,7 @@ export default function CommunityPage() {
   const [type, setType] = useState<'alle' | AdminPost['type']>('alle');
   const [authorFilter, setAuthorFilter] = useState<string | null>(null);
   const [sortLikes, setSortLikes] = useState(false);
+  const [commentsFor, setCommentsFor] = useState<AdminPost | null>(null);
 
   const totalLikes = posts.reduce((n, p) => n + p.likes, 0);
   const totalComments = posts.reduce((n, p) => n + p.comments.length, 0);
@@ -144,6 +145,7 @@ export default function CommunityPage() {
               <PostRow
                 key={p.id}
                 post={p}
+                onComments={() => setCommentsFor(p)}
                 onHide={() => { togglePostHidden(p.id); toast(p.hidden ? 'Beitrag wieder sichtbar' : 'Beitrag versteckt', 'info'); }}
                 onPin={() => { togglePostPinned(p.id); toast(p.pinned ? 'Hervorhebung entfernt' : 'Beitrag hervorgehoben 📌'); }}
                 onDelete={() => { deletePost(p.id); toast('Beitrag gelöscht', 'info'); }}
@@ -153,11 +155,29 @@ export default function CommunityPage() {
           </div>
         </>
       )}
+
+      {/* B8: Kommentare-Modal */}
+      <Modal open={commentsFor !== null} onClose={() => setCommentsFor(null)} title={'Kommentare · ' + (commentsFor?.title ?? ' ')}>
+        {commentsFor && (
+          <div className="max-h-[50vh] space-y-2.5 overflow-y-auto pr-1">
+            {commentsFor.comments.length === 0 && <p className="py-6 text-center text-[12.5px] text-slate-400">Keine Kommentare.</p>}
+            {commentsFor.comments.map((cm) => (
+              <div key={cm.id} className="rounded-xl bg-mist-50 px-3.5 py-2.5">
+                <p className="text-[12px] font-bold text-deep-900">{cm.authorId} · <span className="font-medium text-slate-400">{cm.ago}</span></p>
+                <p className="mt-0.5 text-[12.5px] leading-relaxed text-slate-600">{cm.text}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="mt-4 flex justify-end">
+          <Button variant="ghost" onClick={() => setCommentsFor(null)}>Schließen</Button>
+        </div>
+      </Modal>
     </div>
   );
 }
 
-function PostRow({ post, onHide, onPin, onDelete }: { post: AdminPost; onHide: () => void; onPin: () => void; onDelete: () => void }) {
+function PostRow({ post, onHide, onPin, onDelete, onComments }: { post: AdminPost; onHide: () => void; onPin: () => void; onDelete: () => void; onComments: () => void }) {
   return (
     <Card className={`p-4 ${post.hidden ? 'opacity-50' : ''} ${post.pinned ? 'border-royal-300 bg-royal-50/40' : ''}`}>
       <div className="flex flex-wrap items-start gap-3">
@@ -177,9 +197,9 @@ function PostRow({ post, onHide, onPin, onDelete }: { post: AdminPost; onHide: (
             <span className="flex items-center gap-1">
               <Heart className="h-3.5 w-3.5" aria-hidden /> {post.likes}
             </span>
-            <span className="flex items-center gap-1">
+            <button onClick={onComments} className="tap flex items-center gap-1 font-bold text-royal-700">
               <MessageCircle className="h-3.5 w-3.5" aria-hidden /> {post.comments.length} Kommentare
-            </span>
+            </button>
             <span>{post.ago}</span>
           </p>
         </div>

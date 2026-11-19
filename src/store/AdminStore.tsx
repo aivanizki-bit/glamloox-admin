@@ -193,6 +193,7 @@ export interface AdminContextValue extends AdminState {
   updateProduct: (id: string, patch: Partial<Pick<Product, 'price' | 'badge' | 'shortTitle' | 'blurb'>> & { active?: boolean; stock?: number }) => void;
   addProduct: (p: { shortTitle: string; vendor: string; price: number; category: string; stock: number }) => void;
   deleteProduct: (id: string) => void;
+  restoreLastProduct: () => void;
   // Kurse
   updateCourse: (id: string, patch: { published?: boolean; price?: number }) => void;
   // Events
@@ -302,7 +303,20 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           ...s.products,
         ],
       })),
-    deleteProduct: (id) => setState((s) => ({ ...s, products: s.products.filter((p) => p.id !== id) })),
+    deleteProduct: (id) =>
+      setState((s) => {
+        const removed = s.products.find((p) => p.id === id);
+        if (removed) sessionStorage.setItem('glx-last-product', JSON.stringify(removed));
+        return { ...s, products: s.products.filter((p) => p.id !== id) };
+      }),
+    restoreLastProduct: () =>
+      setState((s) => {
+        const raw = sessionStorage.getItem('glx-last-product');
+        if (!raw) return s;
+        const prod = JSON.parse(raw) as AdminProduct;
+        sessionStorage.removeItem('glx-last-product');
+        return s.products.some((p) => p.id === prod.id) ? s : { ...s, products: [prod, ...s.products] };
+      }),
     addPromotion: (p) =>
       setState((s) => ({ ...s, promotions: [{ ...p, id: 'akt-' + Date.now() }, ...s.promotions] })),
     updatePromotion: (id, patch) =>

@@ -52,10 +52,17 @@ const typeBadges: Record<PromoType, { label: string; cls: string }> = {
 export default function Aktionen() {
   const { promotions, addPromotion, updatePromotion, deletePromotion, products, courses, toast } = useAdmin();
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [filter, setFilter] = useState<'alle' | 'laufend' | 'geplant' | 'beendet'>('alle');
 
   const running = promotions.filter((p) => p.active && p.startDate <= today && p.endDate >= today);
   const planned = promotions.filter((p) => p.startDate > today);
   const expired = promotions.filter((p) => p.endDate < today);
+  const visible = promotions.filter((p) => {
+    if (filter === 'laufend') return p.active && p.startDate <= today && p.endDate >= today;
+    if (filter === 'geplant') return p.startDate > today;
+    if (filter === 'beendet') return p.endDate < today || !p.active;
+    return true;
+  });
 
   return (
     <div className="anim-fade-up">
@@ -76,8 +83,20 @@ export default function Aktionen() {
         <Stat icon={<Truck className="h-5 w-5" aria-hidden />} label="Gratis-Versand ab" value={promotions.filter((p) => p.type === 'versand').length > 0 ? eur(Math.min(...promotions.filter((p) => p.type === 'versand').map((p) => p.value))) : '–'} />
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+        {(['alle', 'laufend', 'geplant', 'beendet'] as const).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={'tap rounded-full px-3.5 py-1.5 text-[12.5px] font-bold capitalize ' + (filter === f ? 'bg-deep-900 text-white' : 'border border-mist-200 bg-white text-slate-500')}
+          >
+            {f} · {f === 'alle' ? promotions.length : f === 'laufend' ? running.length : f === 'geplant' ? planned.length : expired.length}
+          </button>
+        ))}
+      </div>
+
       <div className="space-y-3.5">
-        {[...promotions]
+        {[...visible]
           .sort((a, b) => Number(b.active) - Number(a.active) || b.endDate.localeCompare(a.endDate))
           .map((p) => (
             <PromoRow
@@ -86,8 +105,13 @@ export default function Aktionen() {
               onPatch={(patch) => updatePromotion(p.id, patch)}
               onDelete={() => { deletePromotion(p.id); toast('Aktion gelöscht', 'info'); }}
               onDuplicate={() => {
-                addPromotion({ ...p, name: p.name + ' (Kopie)', active: false });
-                toast('Aktion dupliziert (inaktiv)', 'info');
+                const shift = (iso: string) => {
+                  const d = new Date(iso + 'T12:00');
+                  d.setDate(d.getDate() + 7);
+                  return d.toISOString().slice(0, 10);
+                };
+                addPromotion({ ...p, name: p.name + ' (Kopie)', active: false, startDate: shift(p.startDate), endDate: shift(p.endDate) });
+                toast('Aktion dupliziert (+7 Tage, inaktiv)', 'info');
               }}
             />
           ))}

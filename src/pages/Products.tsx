@@ -18,11 +18,13 @@ const catEmoji: Record<string, string> = {
 const PER_PAGE = 10;
 
 export default function Products() {
-  const { products, updateProduct, addProduct, deleteProduct, duplicateProductSafe, toast } = useAdmin();
+  const { products, updateProduct, addProduct, deleteProduct, restoreLastProduct, duplicateProductSafe, toast } = useAdmin();
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('alle');
   const [status, setStatus] = useState<'alle' | 'aktiv' | 'inaktiv'>('alle');
   const [lowStockOnly, setLowStockOnly] = useState(false);
+  const [badgeFilter, setBadgeFilter] = useState<'alle' | 'Bestseller' | 'Neu'>('alle');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<'name' | 'preis-auf' | 'preis-ab' | 'bestand'>('name');
   const [page, setPage] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
@@ -34,6 +36,7 @@ export default function Products() {
     if (cat !== 'alle') list = list.filter((p) => p.category === cat);
     if (status !== 'alle') list = list.filter((p) => (status === 'aktiv' ? p.active : !p.active));
     if (lowStockOnly) list = list.filter((p) => p.stock < 15);
+    if (badgeFilter !== 'alle') list = list.filter((p) => p.badge === badgeFilter);
     if (q.trim()) {
       const query = q.trim().toLowerCase();
       list = list.filter((p) => p.shortTitle.toLowerCase().includes(query) || p.vendor.toLowerCase().includes(query));
@@ -43,7 +46,7 @@ export default function Products() {
     if (sort === 'preis-ab') list = [...list].sort((a, b) => b.price - a.price);
     if (sort === 'bestand') list = [...list].sort((a, b) => a.stock - b.stock);
     return list;
-  }, [products, cat, status, q, lowStockOnly, sort]);
+  }, [products, cat, status, q, lowStockOnly, badgeFilter, sort]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const safePage = Math.min(page, pages - 1);
@@ -100,6 +103,15 @@ export default function Products() {
           </button>
         ))}
         <span className="mx-1 hidden h-6 w-px bg-mist-200 sm:block" aria-hidden />
+        {(['alle', 'Bestseller', 'Neu'] as const).map((b) => (
+          <button
+            key={b}
+            onClick={() => setBadgeFilter(b)}
+            className={`tap rounded-full px-3.5 py-1.5 text-[12.5px] font-bold ${badgeFilter === b ? 'bg-royal-600 text-white' : 'border border-mist-200 bg-white text-slate-500'}`}
+          >
+            {b === 'alle' ? 'Alle Badges' : b}
+          </button>
+        ))}
         <button
           onClick={() => setLowStockOnly((v) => !v)}
           className={`tap rounded-full px-3.5 py-1.5 text-[12.5px] font-bold ${lowStockOnly ? 'bg-amber-500 text-white' : 'border border-amber-200 bg-amber-50 text-amber-700'}`}
@@ -127,20 +139,31 @@ export default function Products() {
           <option value="preis-ab">Preis absteigend</option>
           <option value="bestand">Bestand (niedrigste)</option>
         </select>
-        {/* Massen-Aktionen */}
+        {/* Massen-Aktionen (Auswahl-basiert) */}
         <span className="mx-1 hidden h-6 w-px bg-mist-200 sm:block" aria-hidden />
         <button
-          onClick={() => { products.forEach((p) => updateProduct(p.id, { active: true })); toast('Alle Produkte aktiviert'); }}
-          className="tap rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-[12px] font-bold text-emerald-700"
+          onClick={() => setSelected(new Set(pageItems.map((p) => p.id)))}
+          className="tap rounded-full border border-royal-200 bg-royal-50 px-3.5 py-1.5 text-[12px] font-bold text-royal-700"
         >
-          Alle aktivieren
+          Seite auswählen
         </button>
-        <button
-          onClick={() => { products.forEach((p) => updateProduct(p.id, { active: false })); toast('Alle Produkte deaktiviert', 'info'); }}
-          className="tap rounded-full border border-mist-200 bg-white px-3.5 py-1.5 text-[12px] font-bold text-slate-500"
-        >
-          Alle deaktivieren
-        </button>
+        {selected.size > 0 && (
+          <>
+            <span className="rounded-full bg-deep-900 px-3 py-1.5 text-[12px] font-bold text-white">{selected.size} ausgewählt</span>
+            <button
+              onClick={() => { selected.forEach((id) => updateProduct(id, { active: true })); toast(selected.size + ' Produkte aktiviert'); setSelected(new Set()); }}
+              className="tap rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-[12px] font-bold text-emerald-700"
+            >
+              Aktivieren
+            </button>
+            <button
+              onClick={() => { selected.forEach((id) => updateProduct(id, { active: false })); toast(selected.size + ' Produkte deaktiviert', 'info'); setSelected(new Set()); }}
+              className="tap rounded-full border border-mist-200 bg-white px-3.5 py-1.5 text-[12px] font-bold text-slate-500"
+            >
+              Deaktivieren
+            </button>
+          </>
+        )}
       </Card>
 
       {/* Tabelle */}
@@ -148,7 +171,16 @@ export default function Products() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px] text-left">
             <thead>
-              <tr className="border-b border-mist-200 bg-mist-50 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+              <tr className="sticky top-[60px] z-10 border-b border-mist-200 bg-mist-50 text-[11px] font-bold uppercase tracking-wide text-slate-400 shadow-[0_1px_0_#E3ECFD]">
+                <th className="w-10 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={pageItems.length > 0 && pageItems.every((p) => selected.has(p.id))}
+                    onChange={(e) => setSelected(e.target.checked ? new Set(pageItems.map((p) => p.id)) : new Set())}
+                    aria-label="Alle Produkte der Seite auswählen"
+                    className="h-4 w-4 accent-royal-600"
+                  />
+                </th>
                 <th className="px-4 py-3">Produkt</th>
                 <th className="px-3 py-3">Kategorie</th>
                 <th className="px-3 py-3 text-right">Preis (€)</th>
@@ -161,6 +193,19 @@ export default function Products() {
             <tbody className="divide-y divide-mist-100">
               {pageItems.map((p) => (
                 <tr key={p.id} className={`hover:bg-mist-50 ${p.active ? '' : 'opacity-50'}`}>
+                  <td className="px-3 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(p.id)}
+                      onChange={(e) => {
+                        const next = new Set(selected);
+                        if (e.target.checked) next.add(p.id); else next.delete(p.id);
+                        setSelected(next);
+                      }}
+                      aria-label={`${p.shortTitle} auswählen`}
+                      className="h-4 w-4 accent-royal-600"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <img src={p.images[0]} alt="" loading="lazy" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
@@ -314,6 +359,17 @@ export default function Products() {
         </div>
       </Modal>
 
+      {/* Undo-Karte nach Löschen */}
+      {sessionStorage.getItem('glx-last-product') && (
+        <div className="mt-3 flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-[12.5px] font-semibold text-amber-800">Produkt gelöscht – wiederherstellen?</p>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => { restoreLastProduct(); toast('Produkt wiederhergestellt ✓'); }}>Wiederherstellen</Button>
+            <Button size="sm" variant="ghost" onClick={() => { sessionStorage.removeItem('glx-last-product'); location.reload(); }}>Verwerfen</Button>
+          </div>
+        </div>
+      )}
+
       {/* Löschen-Bestätigung */}
       <Modal open={delId !== null} onClose={() => setDelId(null)} title="Produkt löschen?">
         <p className="text-[13.5px] leading-relaxed text-slate-600">
@@ -329,7 +385,7 @@ export default function Products() {
             onClick={() => {
               if (delId) deleteProduct(delId);
               setDelId(null);
-              toast('Produkt gelöscht', 'info');
+              toast('Produkt gelöscht – Wiederherstellung unten verfügbar', 'info');
             }}
           >
             Endgültig löschen

@@ -195,6 +195,28 @@ function EventRow({
           <p className="mt-0.5 truncate text-[12px] text-slate-400">
             {event.time} · {event.location}
           </p>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <span className="text-[10.5px] font-semibold text-slate-400">frei/gesamt</span>
+            <input
+              defaultValue={capLeftMatch ? String(capLeft) : ''}
+              onBlur={(ev) => {
+                const v = parseInt(ev.target.value.replace(/\D/g, ''), 10);
+                if (!Number.isNaN(v) && capTotal > 0) onPatch({ seats: 'Noch ' + v + ' von ' + capTotal + ' Plätzen' });
+              }}
+              aria-label={'Freie Plätze ' + event.title}
+              className="h-7 w-12 rounded-lg border border-mist-200 bg-white px-1.5 text-center text-[11.5px] font-bold tabular-nums outline-none focus:border-royal-500"
+            />
+            <span className="text-slate-300">/</span>
+            <input
+              defaultValue={capMatch ? String(capTotal) : ''}
+              onBlur={(ev) => {
+                const total = parseInt(ev.target.value.replace(/\D/g, ''), 10);
+                if (!Number.isNaN(total) && total > 0) onPatch({ seats: 'Noch ' + Math.max(0, capLeft) + ' von ' + total + ' Plätzen' });
+              }}
+              aria-label={'Gesamtplätze ' + event.title}
+              className="h-7 w-12 rounded-lg border border-mist-200 bg-white px-1.5 text-center text-[11.5px] font-bold tabular-nums outline-none focus:border-royal-500"
+            />
+          </div>
           {/* R3: Kapazitäts-Progressbar */}
           {capTotal > 0 && (
             <div className="mt-1.5 flex items-center gap-2">

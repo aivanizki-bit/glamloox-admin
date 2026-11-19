@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Lock, User as UserIcon, Eye, EyeOff, ExternalLink, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { useAdmin } from '../store/AdminStore';
@@ -13,14 +13,34 @@ export default function Login() {
   const [capsOn, setCapsOn] = useState(false);
   const [remember, setRemember] = useState(true);
   const [shake, setShake] = useState(0);
+  const [fails, setFails] = useState(0);
+  const [lockUntil, setLockUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
 
   if (authed) return <Navigate to="/" replace />;
 
+  useEffect(() => {
+    if (lockUntil <= Date.now()) return;
+    const t = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(t);
+  }, [lockUntil, now]);
+
+  const locked = lockUntil > Date.now();
+
   const submit = () => {
+    if (locked) return;
     if (!login(user, pass, remember)) {
       setError(true);
       setShake((n) => n + 1);
+      const nextFails = fails + 1;
+      setFails(nextFails);
+      if (nextFails >= 3) {
+        setLockUntil(Date.now() + 10000);
+        setFails(0);
+      }
       setTimeout(() => setError(false), 2600);
+    } else {
+      setFails(0);
     }
   };
 
@@ -122,8 +142,8 @@ export default function Login() {
               <span className="text-[12px] text-white/70">Auf diesem Gerät angemeldet bleiben</span>
             </label>
 
-            <Button type="submit" className="h-12 w-full rounded-xl text-[14.5px]">
-              <ShieldCheck className="h-[18px] w-[18px]" aria-hidden /> Anmelden
+            <Button type="submit" disabled={locked} className="h-12 w-full rounded-xl text-[14.5px]">
+              <ShieldCheck className="h-[18px] w-[18px]" aria-hidden /> {locked ? 'Gesperrt (' + Math.ceil((lockUntil - now) / 1000) + 's)' : 'Anmelden'}
             </Button>
           </form>
 
