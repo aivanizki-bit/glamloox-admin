@@ -79,7 +79,7 @@ export default function Products() {
       />
 
       {/* Filterleiste */}
-      <Card className="mb-4 flex flex-wrap items-center gap-2.5 p-3.5">
+      <Card className="mb-4 flex flex-wrap items-center gap-x-2.5 gap-y-2 p-3.5">
         <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-mist-200 bg-mist-50 px-3">
           <Search className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
           <input
@@ -151,9 +151,9 @@ export default function Products() {
               <tr className="border-b border-mist-200 bg-mist-50 text-[11px] font-bold uppercase tracking-wide text-slate-400">
                 <th className="px-4 py-3">Produkt</th>
                 <th className="px-3 py-3">Kategorie</th>
-                <th className="px-3 py-3">Preis (€)</th>
+                <th className="px-3 py-3 text-right">Preis (€)</th>
                 <th className="px-3 py-3">Badge</th>
-                <th className="px-3 py-3">Bestand</th>
+                <th className="px-3 py-3 text-right">Bestand</th>
                 <th className="px-3 py-3">Aktiv</th>
                 <th className="px-3 py-3 text-right">Aktionen</th>
               </tr>
@@ -179,7 +179,7 @@ export default function Products() {
                         if (!Number.isNaN(n) && n >= 0) updateProduct(p.id, { price: Math.round(n * 100) / 100 });
                       }}
                       ariaLabel={`Preis von ${p.shortTitle}`}
-                      className="h-9 w-[90px]"
+                      className="h-9 w-[90px] text-right tabular-nums"
                     />
                   </td>
                   <td className="px-3 py-3">
@@ -197,8 +197,8 @@ export default function Products() {
                       <option value="Korean Style">Korean Style</option>
                     </select>
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-1">
+                  <td className="px-3 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={() => updateProduct(p.id, { stock: Math.max(0, p.stock - 1) })}
                         aria-label={`Bestand von ${p.shortTitle} verringern`}

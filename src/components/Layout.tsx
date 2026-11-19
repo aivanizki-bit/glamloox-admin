@@ -106,7 +106,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                           <Icon className="h-[17px] w-[17px] shrink-0" aria-hidden />
                           <span className="flex-1">{label}</span>
                           {to === '/bestellungen' && openOrders > 0 && (
-                            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold text-white">{openOrders}</span>
+                            <span className="ml-auto mr-1 rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold text-white">{openOrders}</span>
                           )}
                         </>
                       )}

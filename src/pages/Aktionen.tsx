@@ -125,7 +125,7 @@ function PromoRow({
   const d = daysLeft(p.endDate);
   const status =
     !p.active ? { label: 'Pausiert', cls: 'bg-mist-200 text-slate-500' }
-    : p.startDate > today ? { label: `startet in ${daysLeft(p.startDate) * -1 > 0 ? Math.abs(daysLeft(p.startDate)) : 0} Tagen`, cls: 'bg-royal-100 text-royal-700' }
+    : p.startDate > today ? { label: `startet am ${new Date(p.startDate + 'T12:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}`, cls: 'bg-royal-100 text-royal-700' }
     : d < 0 ? { label: 'Beendet', cls: 'bg-mist-200 text-slate-400' }
     : d <= 3 ? { label: `endet in ${d} Tagen!`, cls: 'bg-red-100 text-red-600' }
     : { label: `noch ${d} Tage`, cls: 'bg-emerald-100 text-emerald-700' };
@@ -137,15 +137,15 @@ function PromoRow({
           {p.emoji || '✨'}
         </span>
         <div className="min-w-[200px] flex-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
             <p className="text-[15px] font-bold text-deep-900">{p.name}</p>
             <Badge className={typeBadges[p.type].cls}>{typeBadges[p.type].label}</Badge>
             <Badge className={status.cls}>{status.label}</Badge>
             {p.scope === 'eigenmarken' && <Badge className="bg-royal-50 text-royal-700">GLAMLOOX®</Badge>}
             {p.scope === 'kategorie' && <Badge className="bg-royal-50 text-royal-700 capitalize">{p.category.replace('-', ' ')}</Badge>}
           </div>
-          <p className="mt-0.5 truncate text-[12.5px] text-slate-500">{p.bannerText}</p>
-          <p className="mt-0.5 text-[11.5px] text-slate-400">
+          <p className="mt-1 truncate text-[12.5px] font-medium text-slate-600">{p.bannerText}</p>
+          <p className="mt-1 text-[11.5px] font-medium text-slate-500">
             {new Date(p.startDate + 'T12:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} –{' '}
             {new Date(p.endDate + 'T12:00').toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}
             {p.type === 'prozent' || p.type === 'code' ? ` · −${p.value} %` : ''}
@@ -156,8 +156,8 @@ function PromoRow({
           </p>
         </div>
         {/* Live-Vorschau des Kundinnen-Banners */}
-        <div className="hidden min-w-[240px] flex-1 xl:block">
-          <div className="rounded-2xl bg-gradient-to-r from-deep-950 to-royal-800 px-4 py-2.5 shadow-card">
+        <div className="hidden min-w-[240px] max-w-[300px] flex-1 xl:block">
+          <div className="mr-4 rounded-2xl bg-gradient-to-r from-deep-950 to-royal-800 px-4 py-2.5 shadow-card">
             <p className="truncate text-[12.5px] font-bold text-white">
               {p.emoji} {p.bannerText.replace('X', String(p.value))}
             </p>
